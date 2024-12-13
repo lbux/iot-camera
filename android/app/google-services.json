@@ -1,0 +1,48 @@
+{
+  "project_info": {
+    "project_number": "74372433949",
+    "project_id": "smart-doorbell-147",
+    "storage_bucket": "smart-doorbell-147.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:74372433949:android:9e07559d522320670cdef4",
+        "android_client_info": {
+          "package_name": "com.exa"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBF21kDVutZORaALpiKIVjrXE38UPDwIGQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:74372433949:android:b64e31cf2a9d73bd0cdef4",
+        "android_client_info": {
+          "package_name": "com.example.iot_camera"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBF21kDVutZORaALpiKIVjrXE38UPDwIGQ"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
