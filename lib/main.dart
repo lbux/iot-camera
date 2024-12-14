@@ -1,23 +1,9 @@
+import 'dart:convert'; // Import for decoding the response body
 import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:http/http.dart' as http;
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
-import 'firebase_options.dart';
 
-// Handle background notifications
-Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  print('Background message received: ${message.messageId}');
-}
-
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
-
-  FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
-
+void main() {
   runApp(const MyApp());
 }
 
@@ -27,7 +13,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Smart Doorbell',
+      title: 'Security Camera',
       theme: ThemeData(
         primarySwatch: Colors.deepPurple,
       ),
@@ -44,50 +30,10 @@ class NotificationScreen extends StatefulWidget {
 }
 
 class _NotificationScreenState extends State<NotificationScreen> {
-  String _notificationMessage = "Waiting for notifications...";
+  final String _notificationMessage = "Waiting for notifications...";
   String? _notificationImageUrl;
   bool _isStreaming = false;
   InAppWebViewController? _webViewController;
-
-  @override
-  void initState() {
-    super.initState();
-    _setupFirebaseMessaging();
-  }
-
-  void _setupFirebaseMessaging() {
-    FirebaseMessaging messaging = FirebaseMessaging.instance;
-
-    // Request notification permissions
-    messaging.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-    );
-
-    // Print and display the FCM token
-    messaging.getToken().then((token) {
-      print("FCM Token: $token");
-    });
-
-    // Listen to foreground messages
-    FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      setState(() {
-        _notificationMessage =
-            message.notification?.body ?? "No message content.";
-        _notificationImageUrl = message.data['imageUrl'];
-      });
-
-      if (_notificationImageUrl != null) {
-        _showNotificationPopup(_notificationImageUrl!);
-      }
-    });
-
-    // Handle when notification is opened
-    FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print("Message clicked!");
-    });
-  }
 
   Future<void> _sendPostRequest(String endpoint) async {
     try {
@@ -97,15 +43,28 @@ class _NotificationScreenState extends State<NotificationScreen> {
       if (response.statusCode == 200) {
         print('$endpoint request successful');
 
-        if (endpoint == 'start') {
+        if (endpoint == 'screenshot') {
+          // Parse the response to get the image URL
+          final Map<String, dynamic> jsonResponse = json.decode(response.body);
+          final String? imageUrl = jsonResponse['url'];
+
+          if (imageUrl != null) {
+            // Print the image URL from the response body
+            print('Screenshot uploaded successfully. Image URL: $imageUrl');
+            
+            // Show the notification popup with the image URL
+            _showNotificationPopup(imageUrl);
+          }
+        } else if (endpoint == 'start') {
           setState(() {
             _isStreaming = true;
           });
           // Load the WebRTC stream
-          _webViewController?.loadUrl(
-            urlRequest:
-                URLRequest(url: WebUri('http://100.125.19.81:8889/cam')),
-          );
+          if (_webViewController != null) {
+            _webViewController?.loadUrl(
+              urlRequest: URLRequest(url: WebUri('http://100.125.19.81:8889/cam')),
+            );
+          }
         } else if (endpoint == 'stop') {
           setState(() {
             _isStreaming = false;
@@ -125,16 +84,18 @@ class _NotificationScreenState extends State<NotificationScreen> {
       builder: (BuildContext context) {
         return AlertDialog(
           title: const Text('Screenshot Uploaded'),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Your screenshot has been uploaded to the cloud.',
-                style: TextStyle(fontSize: 16),
-              ),
-              const SizedBox(height: 10),
-              Image.network(imageUrl),
-            ],
+          content: SingleChildScrollView(  // Wrap the content in a scrollable view
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Text(
+                  'Your screenshot has been uploaded to the cloud.',
+                  style: TextStyle(fontSize: 16),
+                ),
+                const SizedBox(height: 10),
+                Image.network(imageUrl),
+              ],
+            ),
           ),
           actions: [
             TextButton(
@@ -150,10 +111,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
   }
 
   @override
+  void dispose() {
+    // Ensure the controller is disposed of when the widget is removed
+    _webViewController?.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Smart Doorbell Notifications'),
+        title: const Text('Security Camera'),
       ),
       body: Column(
         mainAxisAlignment: MainAxisAlignment.center,
@@ -164,10 +132,17 @@ class _NotificationScreenState extends State<NotificationScreen> {
             height: 200,
             child: _isStreaming
                 ? InAppWebView(
-                    initialUrlRequest: URLRequest(
-                        url: WebUri('http://100.125.19.81:8889/cam')),
+                    initialUrlRequest: URLRequest(url: WebUri('http://100.125.19.81:8889/cam')),
+                    initialSettings: InAppWebViewSettings(
+                      allowsInlineMediaPlayback: true, // Allow inline playback for WebRTC
+                      mediaPlaybackRequiresUserGesture: false, // Avoid requiring user gestures
+                      javaScriptEnabled: true, // WebRTC often requires JavaScript
+                    ),
                     onWebViewCreated: (controller) {
                       _webViewController = controller;
+                    },
+                    shouldOverrideUrlLoading: (controller, navigationAction) async {
+                      return NavigationActionPolicy.ALLOW; // Allow navigation
                     },
                   )
                 : Container(
