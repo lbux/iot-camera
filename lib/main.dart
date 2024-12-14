@@ -97,6 +97,8 @@ class _NotificationScreenState extends State<NotificationScreen> {
       if (response.statusCode == 200) {
         print('$endpoint request successful');
 
+        print(response.body);
+
         if (endpoint == 'start') {
           setState(() {
             _isStreaming = true;
